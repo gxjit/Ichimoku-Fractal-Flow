@@ -1,0 +1,47 @@
+//@version=6
+// Copyright (c) 2025 Gurjit Singh
+// This source code is licensed under the Creative Commons Attribution-ShareAlike: https://creativecommons.org/licenses/by-sa/4.0/.
+
+indicator("Ichimoku Fractal Flow", precision=2, timeframe="", timeframe_gaps=true)
+
+convLen     = input.int(9,  title="Conversion Line", inline = "len")
+baseLen     = input.int(26, title="Base Line", inline = "len")
+leadLen     = input.int(52, title="Leading Span B", inline = "len1")
+shift       = input.int(26, title="Lag & Lead shift", inline = "len1")
+
+oscWilders = input.bool(false, title="Use Wilder’s (RMA) (vs High-Low Mid) for oscillator")
+useSmooth = input.bool(false, title="Use Smoothing Average", inline = "sm")
+smLen     = input.int(9, title="Length", inline = "sm")
+smWilders = input.bool(false, title="Use Wilder’s (RMA) (vs EMA) for smoothing")
+showFill   = input.bool(true, title="Show Line Fills")
+
+bullishColor = input.color(color.rgb(176, 190, 197), title="Bullish", inline = "Clr")
+bearishColor = input.color(color.rgb(141, 110, 99), title="Bearish", inline = "Clr")
+fillTrans = input.int(94, title="Fill Transparency", inline = "Clr")
+
+maFunc(len) => oscWilders ? ta.rma(close, len) : math.avg(ta.lowest(len), ta.highest(len))
+// mhlma(len) => math.avg(ta.lowest(len), ta.highest(len))
+
+convLine = maFunc(convLen)
+baseLine = maFunc(baseLen)
+leadLineA  = math.avg(convLine, baseLine)
+leadLineB  = maFunc(leadLen)
+
+phase = convLine - baseLine
+kumoPhase = leadLineA - leadLineB
+echo = close - close[shift]
+cloudCenter = math.avg(leadLineA, leadLineB)
+cloudEcho = close - cloudCenter[shift]
+
+maCalc(src, len) => smWilders ? ta.rma(src, len) : ta.ema(src, len)
+
+osc = (echo + cloudEcho + phase + kumoPhase) / 4 
+sm = useSmooth ? maCalc(osc, smLen) : na
+
+bull = useSmooth ? osc > sm : osc > 0
+trendColor = bull ? bullishColor : bearishColor
+
+plotOsc = plot(osc, title="Oscillator", color=trendColor, linewidth=2)
+plotSm = plot(sm, title="Smoothing Average", color=trendColor, linewidth=1)
+fill(plotOsc, plotSm, color=color.new(trendColor, showFill ? fillTrans : 100))
+hline(0, "Zero Line", color=color.gray)
